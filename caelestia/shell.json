@@ -1,0 +1,11 @@
+{
+    "general": {
+        "idle": {
+            "timeouts": [
+            ]
+        }
+    },
+    "services": {
+        "useFahrenheit": false
+    }
+}

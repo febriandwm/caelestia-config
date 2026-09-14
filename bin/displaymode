@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+
+set -u
+
+MONITORS="$(hyprctl monitors -j)"
+
+# Find laptop/internal display
+INTERNAL="$(echo "$MONITORS" | jq -r '
+    .[]
+    | select(.name | test("^(eDP|LVDS)"))
+    | .name
+' | head -n1)"
+
+# Fallback
+if [[ -z "$INTERNAL" || "$INTERNAL" == "null" ]]; then
+    INTERNAL="$(echo "$MONITORS" | jq -r '.[0].name')"
+fi
+
+# Find external display dynamically
+EXTERNAL="$(echo "$MONITORS" | jq -r \
+    --arg internal "$INTERNAL" '
+    .[]
+    | select(.name != $internal)
+    | .name
+' | head -n1)"
+
+# No external display
+if [[ -z "$EXTERNAL" || "$EXTERNAL" == "null" ]]; then
+    notify-send "Display Mode" "No external display connected"
+    exit 0
+fi
+
+# Show menu
+CHOICE="$(
+    printf '%s\n' \
+        "Extend" \
+        "Duplicate" \
+        "Laptop only" \
+        "External only" |
+    fuzzel --dmenu --prompt="Display mode: "
+)"
+
+# Exit if menu was cancelled
+[[ -z "$CHOICE" ]] && exit 0
+
+
+case "$CHOICE" in
+
+    "Extend")
+        INTERNAL_WIDTH="$(echo "$MONITORS" | jq -r \
+            --arg name "$INTERNAL" '
+            .[]
+            | select(.name == $name)
+            | .width
+        ')"
+
+        hyprctl eval \
+            "hl.monitor({ output = \"$INTERNAL\", mode = \"preferred\", position = \"0x0\", scale = 1 })"
+
+        hyprctl eval \
+            "hl.monitor({ output = \"$EXTERNAL\", mode = \"preferred\", position = \"${INTERNAL_WIDTH}x0\", scale = 1 })"
+        ;;
+
+
+    "Duplicate")
+        hyprctl eval \
+            "hl.monitor({ output = \"$INTERNAL\", mode = \"1920x1080@60\", position = \"0x0\", scale = 1 })"
+
+        hyprctl eval \
+            "hl.monitor({ output = \"$EXTERNAL\", mode = \"1920x1080@60\", position = \"auto\", scale = 1, mirror = \"$INTERNAL\" })"
+        ;;
+
+
+    "Laptop only")
+        hyprctl eval \
+            "hl.monitor({ output = \"$EXTERNAL\", disabled = true })"
+
+        hyprctl eval \
+            "hl.monitor({ output = \"$INTERNAL\", mode = \"preferred\", position = \"0x0\", scale = 1 })"
+        ;;
+
+
+    "External only")
+        hyprctl eval \
+            "hl.monitor({ output = \"$INTERNAL\", disabled = true })"
+
+        hyprctl eval \
+            "hl.monitor({ output = \"$EXTERNAL\", mode = \"preferred\", position = \"0x0\", scale = 1 })"
+        ;;
+
+esac
