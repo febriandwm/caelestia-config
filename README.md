@@ -14,9 +14,8 @@ Backup CachyOS + Caelestia desktop configuration.
 ## System patches
 `caelestia-system-patches` folder contains my local changes to the installed Caelestia files.
 
+
 The NetworkUsage timer was disabled as a workaround for a Caelestia/Quickshell freeze. (idk lol, havent tested it yet)
-
 These files belong to:
-
 ```text
-/etc/xdg/quickshell/caelestia/
+/etc/xdg/quickshell/caelestia/services
